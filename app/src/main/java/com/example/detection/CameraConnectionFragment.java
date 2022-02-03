@@ -38,6 +38,7 @@ import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
@@ -80,6 +81,8 @@ public class CameraConnectionFragment extends Fragment {
         ORIENTATIONS.append(Surface.ROTATION_180, 270);
         ORIENTATIONS.append(Surface.ROTATION_270, 180);
     }
+
+    private List<String> poseClassification = null;
 
     /** A {@link Semaphore} to prevent the app from exiting before closing the camera. */
     private final Semaphore cameraOpenCloseLock = new Semaphore(1);
@@ -257,6 +260,12 @@ public class CameraConnectionFragment extends Fragment {
     @Override
     public View onCreateView(
             final LayoutInflater inflater, final ViewGroup container, final Bundle savedInstanceState) {
+//        View view = inflater.inflate(R.layout.camera_fragment, container, false);
+//
+//        LinearLayout surface = view.findViewById(R.id.surface);
+//        surface.addView(new Overlay(getActivity(), poseClassification));
+//
+//        return view;
         return inflater.inflate(layout, container, false);
     }
 
@@ -348,7 +357,7 @@ public class CameraConnectionFragment extends Fragment {
         final Activity activity = getActivity();
         final CameraManager manager = (CameraManager) activity.getSystemService(Context.CAMERA_SERVICE);
         try {
-            if (!cameraOpenCloseLock.tryAcquire(2500, TimeUnit.MILLISECONDS)) {
+            if (!cameraOpenCloseLock.tryAcquire(4000, TimeUnit.MILLISECONDS)) {
                 throw new RuntimeException("Time out waiting to lock camera opening.");
             }
             if (ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {

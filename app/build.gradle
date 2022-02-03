@@ -51,7 +51,7 @@ dependencies {
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
 
     // If you want to use the base sdk
-//    implementation 'com.google.mlkit:pose-detection:17.0.1-beta7'
+    implementation 'com.google.mlkit:pose-detection:17.0.1-beta7'
     // If you want to use the accurate sdk
-    implementation 'com.google.mlkit:pose-detection-accurate:17.0.1-beta7'
+//    implementation 'com.google.mlkit:pose-detection-accurate:17.0.1-beta7'
 }

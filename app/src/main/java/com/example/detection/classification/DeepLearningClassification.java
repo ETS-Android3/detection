@@ -3,6 +3,10 @@ package com.example.detection.classification;
 
 import static com.example.detection.classification.PoseEmbedding.getPoseEmbedding;
 import android.content.Context;
+import android.os.Trace;
+
+import com.example.detection.ml.FinalModel1024;
+import com.example.detection.ml.FinalModel2048;
 import com.example.detection.ml.FinalModel3;
 import com.google.mlkit.vision.common.PointF3D;
 import com.google.mlkit.vision.pose.Pose;
@@ -19,13 +23,17 @@ import java.util.Set;
 
 public class DeepLearningClassification {
     private FinalModel3 model;
+    private int countInference;
+    private int totalMilli;
 
-    public DeepLearningClassification(Context context) throws IOException {
+    public DeepLearningClassification(Context context, int countInference, int totalMilli) throws IOException {
+        this.countInference = countInference;
+        this.totalMilli = totalMilli;
         this.model = FinalModel3.newInstance(context);
+        System.out.println("final model 2048");
     }
 
-    public List<String> classify(Pose pose) {
-        ClassificationResult result = new ClassificationResult();
+    public List<Integer> classify(Pose pose) {
         // Creates inputs for reference.
         TensorBuffer inputFeature0 = TensorBuffer.createFixedSize(new int[]{1, 99}, DataType.FLOAT32);
         List<PointF3D> landmarks = extractPoseLandmarks(pose);
@@ -34,97 +42,66 @@ public class DeepLearningClassification {
             return null;
         }
         List<PointF3D> embedding = getPoseEmbedding(landmarks);
-        ByteBuffer buf = ByteBuffer.allocateDirect(99 * 4);
 
-        for (PointF3D landmark : embedding) {
-            buf.putFloat(landmark.getX());
-            buf.putFloat(landmark.getY());
-            buf.putFloat(landmark.getZ());
-        }
-        buf.rewind();
-        inputFeature0.loadBuffer(buf);
-
-        System.out.println("input: " + Arrays.toString(inputFeature0.getFloatArray()));
-
-        // Runs model inference and gets result.
-        FinalModel3.Outputs outputs = model.process(inputFeature0);
-        TensorBuffer outputFeature0 = outputs.getOutputFeature0AsTensorBuffer();
-        float[] data = outputFeature0.getFloatArray();
-        System.out.println("output1: " + Arrays.toString(data));
-        int i = 0;
-        for (float val : data) {
-            switch (i) {
-                case 0:
-                    result.putClassConfidence("goddess", val);
-                    break;
-                case 1:
-                    result.putClassConfidence("warrior 2", val);
-                    break;
-                case 2:
-                    result.putClassConfidence("tree", val);
-                    break;
-                case 3:
-                    result.putClassConfidence("plank", val);
-                    break;
-                case 4:
-                    result.putClassConfidence("downward facing dog", val);
-                    break;
-            }
-            i++;
-        }
-        // Releases model resources if no longer used.
-        model.close();
-        return getStringFromResult(result);
-    }
-
-    public void classifySample(PoseSample sample) {
-        boolean justOnce = true;
-        // Creates inputs for reference.
-        TensorBuffer inputFeature0 = TensorBuffer.createFixedSize(new int[]{1, 99}, DataType.FLOAT32);
-        List<PointF3D> landmarks = sample.getLandmarks();
-        List<PointF3D> embedding = getPoseEmbedding(landmarks);
-        ByteBuffer buf = ByteBuffer.allocateDirect(99 * 4);
         float temp[] = new float[99];
         int q = 0;
         for (PointF3D landmark : embedding) {
             temp[q] = (landmark.getX());
             temp[q+1] = (landmark.getY());
             temp[q+2] = (landmark.getZ());
-
-            buf.putFloat(landmark.getX());
-            buf.putFloat(landmark.getY());
-            buf.putFloat(landmark.getZ());
             q=q+3;
         }
-        buf.rewind();
-        inputFeature0.loadBuffer(buf);
+        inputFeature0.loadArray(temp,new int[]{1,99});
 
-//            float y = 1;
-//            for (int i = 0; i < 99; i++) {
-//                y = buf.getFloat();
-//                if (temp[i] == y) {
-//                    System.out.println("same same! " + y);
-//                } else {
-//                    System.out.println("different! " + temp + " " + y);
-//                }
-//            }
-//            buf.rewind();
-        System.out.println("input2: " + Arrays.toString(inputFeature0.getFloatArray()));
+//        System.out.println("input: " + Arrays.toString(inputFeature0.getFloatArray()));
 
+        long startTime = System.nanoTime();
         // Runs model inference and gets result.
+        Trace.beginSection("DeepLearningClassification.classify");
         FinalModel3.Outputs outputs = model.process(inputFeature0);
+        Trace.endSection();
+        long endTime = System.nanoTime();
+        int duration = (int) (endTime - startTime);
+        countInference++;
+        if(countInference<100){
+            totalMilli = totalMilli + duration;
+        }
+        if(countInference == 100){
+            System.out.println("Average inference time pose classification: " + totalMilli/100);
+        }
+        List<Integer> list = new ArrayList<>();
+        list.add(countInference);
+        list.add(totalMilli);
+
+        System.out.println(countInference + " execute pose classification, nano seconds: " + duration);
         TensorBuffer outputFeature0 = outputs.getOutputFeature0AsTensorBuffer();
         float[] data = outputFeature0.getFloatArray();
-        System.out.println("output2: " + Arrays.toString(data));
+//        System.out.println("output1: " + Arrays.toString(data));
         int maxAt = 0;
         for (int j = 0; j < data.length; j++) {
             maxAt = data[j] > data[maxAt] ? j : maxAt;
         }
-        System.out.println("should be: " + sample.getClassName());
-        System.out.println("found: " + maxAt);
 
+        switch (maxAt) {
+            case 0:
+                System.out.println("Goddess, confidence:" + data[maxAt]);
+                break;
+            case 1:
+                System.out.println("Warrior 2, confidence:" + data[maxAt]);
+                break;
+            case 2:
+                System.out.println("Tree, confidence:" + data[maxAt]);
+                break;
+            case 3:
+                System.out.println("Plank, confidence:" + data[maxAt]);
+                break;
+            case 4:
+                System.out.println("Downward Facing Dog, confidence:" + data[maxAt]);
+                break;
+        }
         // Releases model resources if no longer used.
         model.close();
+        return list;
     }
 
 
@@ -136,16 +113,5 @@ public class DeepLearningClassification {
         return landmarks;
     }
 
-    private List<String> getStringFromResult(ClassificationResult classificationResult){
-        List<String> listFromResult = new ArrayList<>();
-        String conf;
-        Set<String> classes = classificationResult.getAllClasses();
-        for(String cl : classes) {
-            float res = classificationResult.getClassConfidence(cl);
-            conf = String.format(
-                    Locale.US, "%s : %.2f confidence", cl, res);
-            listFromResult.add(conf);
-        }
-        return listFromResult;
-    }
+
 }

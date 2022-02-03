@@ -16,7 +16,6 @@ tools:context=".MainActivity">
     app:layout_constraintStart_toStartOf="parent"
     app:layout_constraintTop_toTopOf="parent"
     tools:context="org.tensorflow.lite.examples.classification.CameraActivity">
-
 </FrameLayout>
 
 
